@@ -5,15 +5,18 @@ const int charge321 = 0; // orange
 const int charge21 = 0; // yellow
 // jacksense = 
 // battery = blue
-#define CCFL_PIN 10  // pin 10 is what we're actually using
+#define CCFL_PIN 5  // pin 10 old, pin 5 new (for 32khz special)
 const int onfet = 4; // 4 is PD4
-#define CCFL_SENSE A6
-const int brightness = 150; // 175 with built-in vref
+#define CCFL_SENSE 20 // A6 = 20
+const int brightness = 500; // 175 with built-in vref
 #define MAX_PWM 250
 #define BUTTON_SENSE 2 // 2 is PD2
 #define LED_PIN 7
-int pwmVal = 0;
-int jumpVal = 10;
+int pwmVal = 80;
+int jumpVal = 1;
+int offCount = 0;  // counts how many off requests we've seen
+#define OFF_THRESH 100 // how many to make us turn off
+unsigned long senseRead = 0;
 
 
 void setup() {
@@ -25,31 +28,47 @@ pinMode(LED_PIN,OUTPUT);
 digitalWrite(LED_PIN,HIGH);  // LED ON
 
 pinMode(CCFL_PIN,OUTPUT);
-setPwmFrequency(CCFL_PIN,1); // set PWM freq to 31,250 Hz
-
-//TCCR2B &= 0b11111000;  // clear clock-select bits
-//TCCR2B |= 1; // pin 3 to 31250Hz divided by 1
-  Serial.begin(9600); 
+// setPwmFrequency(CCFL_PIN,1); // set PWM freq to 31,250 Hz
+// WGM02 = 0, WGM01 = 1, WGM00 = 1 see page 108
+// COM0B1 = 1, COM0B0 = 0 see page 107
+// CS02 = 0, CS01 = 0, CS00 = 1 see page 110
+  CLKPR = 0x80;  // enable write to clkps see page 37
+  CLKPR = 0x00;  // set divisor to 1  see page 38
+  TCCR0A = 0b10100011;
+  TCCR0B = 0b00000001;
+  Serial.begin(38400);  // actually 38400 behaves like 9600
 }
 
 void loop() {
-  if (analogRead(CCFL_SENSE) < brightness) {
+  senseRead = 0;
+  for (int i = 0; i < 50; i++) senseRead += analogRead(CCFL_SENSE);
+  senseRead /= 50;
+  if (senseRead < brightness) {
+    digitalWrite(LED_PIN,HIGH);  // LED ON
     pwmVal += jumpVal;
-    if (pwmVal > MAX_PWM) pwmVal = 1;
+    if (pwmVal > MAX_PWM) pwmVal = MAX_PWM;
     analogWrite(CCFL_PIN,pwmVal);
   }
-  if (analogRead(CCFL_SENSE) > brightness) {
+  if (senseRead > brightness) {
+    digitalWrite(LED_PIN,LOW);  // LED OFF
     pwmVal -= jumpVal;
     if (pwmVal < 1) pwmVal = 1;  
     analogWrite(CCFL_PIN,pwmVal);
   }
 
-  Serial.println(analogRead(CCFL_SENSE));
-  delay(50);
+  Serial.print(pwmVal,HEX);
+  Serial.print("    ");
+  Serial.println(senseRead);
+  delay(4000);
   
-  if (digitalRead(BUTTON_SENSE)) {
+  if ((digitalRead(BUTTON_SENSE)) && (millis() > 5000)) {
+    offCount++;
+  } else {
+    if (--offCount < 0) offCount = 0;
+  }
+
+  if (offCount > OFF_THRESH) {
     digitalWrite(onfet,LOW); // turn power off
-    digitalWrite(LED_PIN,LOW); // turn LED off
   }
 }
 
