@@ -8,14 +8,14 @@ const int charge21 = 0; // yellow
 #define CCFL_PIN 5  // pin 10 old, pin 5 new (for 32khz special)
 const int onfet = 4; // 4 is PD4
 #define CCFL_SENSE 20 // A6 = 20
-const int brightness = 500; // 175 with built-in vref
+int brightness = 500; // 175 with built-in vref
 #define MAX_PWM 250
 #define BUTTON_SENSE 2 // 2 is PD2
 #define LED_PIN 7
 int pwmVal = 80;
 int jumpVal = 1;
 int offCount = 0;  // counts how many off requests we've seen
-#define OFF_THRESH 100 // how many to make us turn off
+#define OFF_THRESH 10 // how many to make us turn off
 unsigned long senseRead = 0;
 
 
@@ -61,14 +61,18 @@ void loop() {
   Serial.println(senseRead);
   delay(4000);
   
-  if ((digitalRead(BUTTON_SENSE)) && (millis() > 5000)) {
+  if ((digitalRead(BUTTON_SENSE)) && (millis() > 500)) {
     offCount++;
   } else {
     if (--offCount < 0) offCount = 0;
   }
 
   if (offCount > OFF_THRESH) {
-    digitalWrite(onfet,LOW); // turn power off
+    digitalWrite(LED_PIN,HIGH);  // LED ON
+    // digitalWrite(onfet,LOW); // turn power off
+    analogWrite(CCFL_PIN,0); // turn off ccfl
+    while (true);  // wait here until they let go of button
+    // brightness = 400;
   }
 }
 
