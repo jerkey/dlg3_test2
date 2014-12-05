@@ -60,7 +60,7 @@ void loop() {
   //Serial.print(pwmVal,HEX);
   //Serial.print("    ");
   //Serial.println(senseRead);
-  //delay(4000);
+  delay(4000); // one second or four?
   
   if (bootedUp) {
     if (digitalRead(BUTTON_SENSE)) {
