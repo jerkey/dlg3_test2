@@ -8,7 +8,7 @@ const int charge21 = 0; // yellow
 #define CCFL_PIN 5  // pin 10 old, pin 5 new (for 32khz special)
 const int onfet = 4; // 4 is PD4
 #define CCFL_SENSE 20 // A6 = 20
-int brightness = 500; // 175 with built-in vref
+int brightness = 450; // 175 with built-in vref
 #define MAX_PWM 250
 #define BUTTON_SENSE 2 // 2 is PD2
 #define LED_PIN 7
