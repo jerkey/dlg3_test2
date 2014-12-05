@@ -17,6 +17,7 @@ int jumpVal = 1;
 int offCount = 0;  // counts how many off requests we've seen
 #define OFF_THRESH 10 // how many to make us turn off
 unsigned long senseRead = 0;
+boolean bootedUp = false; // whether it has been 500mS since power on
 
 
 void setup() {
@@ -61,11 +62,19 @@ void loop() {
   //Serial.println(senseRead);
   //delay(4000);
   
-  if ((digitalRead(BUTTON_SENSE)) && (millis() > 500)) {
-    offCount++;
-  } else {
-    if (--offCount < 0) offCount = 0;
+  if (bootedUp) {
+    if (digitalRead(BUTTON_SENSE)) {
+      offCount++;
+    } else {
+      if (--offCount < 0) offCount = 0;
+    }
   }
+  else { // not bootedUp
+    if (millis() > 500) {
+      bootedUp = true; // we can start looking at power button
+    }
+  }
+  
 
   if (offCount > OFF_THRESH) {
     digitalWrite(LED_PIN,HIGH);  // LED ON
