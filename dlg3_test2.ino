@@ -36,7 +36,7 @@ pinMode(CCFL_PIN,OUTPUT);
   CLKPR = 0x00;  // set divisor to 1  see page 38
   TCCR0A = 0b10100011;
   TCCR0B = 0b00000001;
-  Serial.begin(38400);  // actually 38400 behaves like 9600
+  //Serial.begin(38400);  // actually 38400 behaves like 9600
 }
 
 void loop() {
@@ -56,10 +56,10 @@ void loop() {
     analogWrite(CCFL_PIN,pwmVal);
   }
 
-  Serial.print(pwmVal,HEX);
-  Serial.print("    ");
-  Serial.println(senseRead);
-  delay(4000);
+  //Serial.print(pwmVal,HEX);
+  //Serial.print("    ");
+  //Serial.println(senseRead);
+  //delay(4000);
   
   if ((digitalRead(BUTTON_SENSE)) && (millis() > 500)) {
     offCount++;
