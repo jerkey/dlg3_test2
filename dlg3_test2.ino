@@ -27,7 +27,7 @@ digitalWrite(onfet,HIGH);  // keep power on
 pinMode(LED_PIN,OUTPUT);
 digitalWrite(LED_PIN,HIGH);  // LED ON
 
-pinMode(CCFL_PIN,OUTPUT);
+pinMode(CCFL_PIN,OUTPUT); // 32khz
 // setPwmFrequency(CCFL_PIN,1); // set PWM freq to 31,250 Hz
 // WGM02 = 0, WGM01 = 1, WGM00 = 1 see page 108
 // COM0B1 = 1, COM0B0 = 0 see page 107
@@ -36,7 +36,7 @@ pinMode(CCFL_PIN,OUTPUT);
   CLKPR = 0x00;  // set divisor to 1  see page 38
   TCCR0A = 0b10100011;
   TCCR0B = 0b00000001;
-  //Serial.begin(38400);  // actually 38400 behaves like 9600
+  Serial.begin(38400);  // actually 38400 behaves like 19200
 }
 
 void loop() {
@@ -59,15 +59,17 @@ void loop() {
   //Serial.print(pwmVal,HEX);
   //Serial.print("    ");
   //Serial.println(senseRead);
-  delay(4000); // one second or four?
+  delay(4000); // actual time 1/32 this number of milliseconds
   
   if (digitalRead(BUTTON_SENSE)) {
+    Serial.print("+");
     offCount++;
   } else {
     offCount = 0; // if (--offCount < 0) offCount = 0;
   }
 
   if (offCount > OFF_THRESH) {
+    Serial.println("off");
     digitalWrite(LED_PIN,HIGH);  // LED ON
     digitalWrite(onfet,LOW); // turn power off
     analogWrite(CCFL_PIN,0); // turn off ccfl
