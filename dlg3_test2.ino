@@ -1,28 +1,31 @@
-
-const int drain1 = 0; // brown
-const int drain21 = 0; // red
-const int charge321 = 0; // orange
-const int charge21 = 0; // yellow
-// jacksense = 
-// battery = blue
-#define CCFL_PIN 5  // pin 10 old, pin 5 new (for 32khz special)
-const int onfet = 4; // 4 is PD4
-#define CCFL_SENSE 20 // A6 = 20
+#define BUTTON_SENSE 2  // PD2/2
+#define ONFET        4  // PD4/4
+#define CCFL_PIN     5  // pin 10 old, pin 5 new (for 32khz special)
+#define LED_PIN      7  // PD7/7
+#define CHARGE123    9  // PB1/9 prototype
+#define DRAIN1       11 // PB3/11 prototype
+#define DRAIN2       3  // PD3/3
+#define DRAIN3       10 // PB2/10 prototype
+#define BOOST        6  // PD6/6 prototype
+#define B1THERM      A0
+#define B2THERM      A1
+#define B3THERM      A2
+#define B1P          A3
+#define B2P          A4
+#define BATTERY      A5
+#define CCFL_SENSE   A6
+#define JACK_SENSE   A7
 int brightness = 450; // 175 with built-in vref
 #define MAX_PWM 250
-#define BUTTON_SENSE 2 // 2 is PD2
-#define LED_PIN 7
 int pwmVal = 80;
 int jumpVal = 1;
 int offCount = 0;  // counts how many off requests we've seen
 #define OFF_THRESH 10 // how many to make us turn off
 unsigned long senseRead = 0;
 
-
 void setup() {
-pinMode(onfet,OUTPUT);
-digitalWrite(onfet,HIGH);  // keep power on
-
+pinMode(ONFET,OUTPUT);
+digitalWrite(ONFET,HIGH);  // keep power on
 
 pinMode(LED_PIN,OUTPUT);
 digitalWrite(LED_PIN,HIGH);  // LED ON
@@ -71,7 +74,7 @@ void loop() {
   if (offCount > OFF_THRESH) {
     Serial.println("off");
     digitalWrite(LED_PIN,HIGH);  // LED ON
-    digitalWrite(onfet,LOW); // turn power off
+    digitalWrite(ONFET,LOW); // turn power off
     analogWrite(CCFL_PIN,0); // turn off ccfl
     while (true);  // wait here until they let go of button
     // brightness = 400;
