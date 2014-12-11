@@ -21,7 +21,7 @@ int pwmVal = 80;
 int jumpVal = 1;
 int offCount = 0;  // counts how many off requests we've seen
 #define OFF_THRESH 10 // how many to make us turn off
-unsigned long senseRead = 0;
+unsigned long senseRead, analogAdder = 0;
 
 void setup() {
 pinMode(ONFET,OUTPUT);
@@ -59,9 +59,13 @@ void loop() {
     analogWrite(CCFL_PIN,pwmVal);
   }
 
-  //Serial.print(pwmVal,HEX);
-  //Serial.print("    ");
-  //Serial.println(senseRead);
+  analogAdder = 0;
+  for (int i = 0; i < 50; i++) analogAdder += analogRead(BATTERY);
+  analogAdder /= 50;
+  Serial.print(analogAdder,HEX);
+  Serial.print("battery    (");
+  Serial.println(analogRead(BATTERY),HEX);
+
   delay(4000); // actual time 1/32 this number of milliseconds
   
   if (digitalRead(BUTTON_SENSE)) {
