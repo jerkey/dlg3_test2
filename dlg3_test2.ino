@@ -29,6 +29,7 @@ int offCount = 0;  // counts how many off requests we've seen
 unsigned long senseRead = 0;
 #define DELAYFACTOR 64 // millis() and delay() this many times faster
 float batt1,batt2,batt3; // voltage of battery cells
+int debugMode = 1; // allows for debugging modes to be triggered in production software
 
 void setup() {
 pinMode(ONFET,OUTPUT);
@@ -50,18 +51,20 @@ pinMode(CCFL_PIN,OUTPUT); // 32khz
 }
 
 void loop() {
-  senseRead = averageRead(CCFL_SENSE);
-  if (senseRead < brightness) {
-    digitalWrite(LED_PIN,HIGH);  // LED ON
-    pwmVal += jumpVal;
-    if (pwmVal > MAX_PWM) pwmVal = MAX_PWM;
-    analogWrite(CCFL_PIN,pwmVal);
-  }
-  if (senseRead > brightness) {
-    digitalWrite(LED_PIN,LOW);  // LED OFF
-    pwmVal -= jumpVal;
-    if (pwmVal < 1) pwmVal = 1;  
-    analogWrite(CCFL_PIN,pwmVal);
+  if (debugMode == 0) {
+    senseRead = averageRead(CCFL_SENSE);
+    if (senseRead < brightness) {
+      digitalWrite(LED_PIN,HIGH);  // LED ON
+      pwmVal += jumpVal;
+      if (pwmVal > MAX_PWM) pwmVal = MAX_PWM;
+      analogWrite(CCFL_PIN,pwmVal);
+    }
+    if (senseRead > brightness) {
+      digitalWrite(LED_PIN,LOW);  // LED OFF
+      pwmVal -= jumpVal;
+      if (pwmVal < 1) pwmVal = 1;
+      analogWrite(CCFL_PIN,pwmVal);
+    }
   }
   getBattVoltages();
   printAnalogs();
@@ -103,18 +106,28 @@ void die(String reason) {
 }
 
 void printAnalogs() {
-  Serial.print(averageRead(B1P),3);
-  Serial.print(" B1P  (");
-  Serial.print(averageRead(B1P)/B1P_COEFF,3);
-  Serial.print(")   ");
-  Serial.print(averageRead(B2P),3);
-  Serial.print(" B2P  (");
-  Serial.print(averageRead(B2P)/B2P_COEFF,3);
-  Serial.print(")   ");
-  Serial.print(averageRead(BATTERY),3);
-  Serial.print(" BATTERY  (");
-  Serial.print(averageRead(BATTERY)/BATTERY_COEFF,3);
-  Serial.print(")      TH1: ");
+  if (debugMode > 0) { // print detailed battery analogRead information
+    Serial.print(averageRead(B1P),3);
+    Serial.print(" B1P  (");
+    Serial.print(averageRead(B1P)/B1P_COEFF,3);
+    Serial.print(")   ");
+    Serial.print(averageRead(B2P),3);
+    Serial.print(" B2P  (");
+    Serial.print(averageRead(B2P)/B2P_COEFF,3);
+    Serial.print(")   ");
+    Serial.print(averageRead(BATTERY),3);
+    Serial.print(" BATTERY  (");
+    Serial.print(averageRead(BATTERY)/BATTERY_COEFF,3);
+    Serial.print(")");
+  } else {
+    Serial.print("batt1=");
+    Serial.print(batt1,3);
+    Serial.print("   batt2=");
+    Serial.print(batt2,3);
+    Serial.print("   batt3=");
+    Serial.print(batt3,3);
+  }
+  Serial.print("      TH1: ");
   Serial.print(analogRead(B1THERM),HEX);
   Serial.print("  TH2: ");
   Serial.print(analogRead(B2THERM),HEX);
