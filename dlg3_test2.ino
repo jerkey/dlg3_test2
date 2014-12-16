@@ -26,7 +26,7 @@ int brightness = 450; // 175 with built-in vref
 int pwmVal = 80;
 int jumpVal = 1;
 int offCount = 0;  // counts how many off requests we've seen
-#define OFF_THRESH 10 // how many to make us turn off
+#define OFF_THRESH 5 // how many to make us turn off
 unsigned long senseRead = 0;
 #define DELAYFACTOR 64 // millis() and delay() this many times faster
 float batt1,batt2,batt3; // voltage of battery cells
