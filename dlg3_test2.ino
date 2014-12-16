@@ -19,6 +19,7 @@
 #define B1P_COEFF     203.518 // ADC counts per volt
 #define B2P_COEFF     122.460
 #define BATTERY_COEFF 81.936
+#define BATT_EMPTY   2.95 // how many volts to DIE at
 
 int brightness = 450; // 175 with built-in vref
 #define MAX_PWM 250
@@ -68,6 +69,10 @@ void loop() {
   }
   getBattVoltages();
   printAnalogs();
+
+  if (batt1 < BATT_EMPTY) die("batt1");
+  if (batt2 < BATT_EMPTY) die("batt2");
+  if (batt3 < BATT_EMPTY) die("batt3");
 
   delay(125*DELAYFACTOR); // actual time = n * DELAYFACTOR milliseconds
   
