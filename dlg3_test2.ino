@@ -70,9 +70,9 @@ void loop() {
   getBattVoltages();
   printAnalogs();
 
-  if (batt1 < BATT_EMPTY) die("batt1");
-  if (batt2 < BATT_EMPTY) die("batt2");
-  if (batt3 < BATT_EMPTY) die("batt3");
+  if (batt1 < BATT_EMPTY) die("batt1 dead! ");
+  if (batt2 < BATT_EMPTY) die("batt2 dead! ");
+  if (batt3 < BATT_EMPTY) die("batt3 dead! ");
 
   delay(125*DELAYFACTOR); // actual time = n * DELAYFACTOR milliseconds
   
@@ -105,6 +105,7 @@ void die(String reason) {
   digitalWrite(ONFET,LOW); // turn power off
   analogWrite(CCFL_PIN,0); // turn off ccfl
   while (true) { // wait here until they let go of button
+    Serial.print(reason);
     printAnalogs();
     delay((unsigned)1000*DELAYFACTOR);
   }
@@ -123,7 +124,12 @@ void printAnalogs() {
     Serial.print(averageRead(BATTERY),3);
     Serial.print(" BATTERY  (");
     Serial.print(averageRead(BATTERY)/BATTERY_COEFF,3);
-    Serial.print(")");
+    Serial.print(")      TH1: ");
+    Serial.print(averageRead(B1THERM),2);
+    Serial.print("  TH2: ");
+    Serial.print(averageRead(B2THERM),2);
+    Serial.print("  TH3: ");
+    Serial.print(averageRead(B3THERM),2);
   } else {
     Serial.print("batt1=");
     Serial.print(batt1,3);
@@ -132,12 +138,7 @@ void printAnalogs() {
     Serial.print("   batt3=");
     Serial.print(batt3,3);
   }
-  Serial.print("      TH1: ");
-  Serial.print(analogRead(B1THERM),HEX);
-  Serial.print("  TH2: ");
-  Serial.print(analogRead(B2THERM),HEX);
-  Serial.print("  TH3: ");
-  Serial.println(analogRead(B3THERM),HEX);
+  Serial.println("");
 }
 
 void setPwmFrequency(int pin, int divisor) {
