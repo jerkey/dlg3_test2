@@ -16,9 +16,9 @@
 #define CCFL_SENSE   A6
 #define JACK_SENSE   A7
 
-#define B1P_COEFF     203.465 // ADC counts per volt
-#define B2P_COEFF     122.112
-#define BATTERY_COEFF 81.743
+#define B1P_COEFF     203.518 // ADC counts per volt
+#define B2P_COEFF     122.460
+#define BATTERY_COEFF 81.936
 
 int brightness = 450; // 175 with built-in vref
 #define MAX_PWM 250
@@ -29,7 +29,7 @@ int offCount = 0;  // counts how many off requests we've seen
 unsigned long senseRead = 0;
 #define DELAYFACTOR 64 // millis() and delay() this many times faster
 float batt1,batt2,batt3; // voltage of battery cells
-int debugMode = 1; // allows for debugging modes to be triggered in production software
+int debugMode = 0; // allows for debugging modes to be triggered in production software
 
 void setup() {
 pinMode(ONFET,OUTPUT);
