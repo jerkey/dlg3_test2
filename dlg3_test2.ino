@@ -15,6 +15,11 @@
 #define BATTERY      A5
 #define CCFL_SENSE   A6
 #define JACK_SENSE   A7
+
+#define B1P_COEFF     203.465 // ADC counts per volt
+#define B2P_COEFF     122.112
+#define BATTERY_COEFF 81.743
+
 int brightness = 450; // 175 with built-in vref
 #define MAX_PWM 250
 int pwmVal = 80;
@@ -57,17 +62,17 @@ void loop() {
     analogWrite(CCFL_PIN,pwmVal);
   }
 
-  Serial.print(averageRead(B1P),HEX);
+  Serial.print(averageRead(B1P),3);
   Serial.print(" B1P  (");
-  Serial.print(analogRead(B1P),HEX);
+  Serial.print(averageRead(B1P)/B1P_COEFF,3);
   Serial.print(")   ");
-  Serial.print(averageRead(B2P),HEX);
+  Serial.print(averageRead(B2P),3);
   Serial.print(" B2P  (");
-  Serial.print(analogRead(B2P),HEX);
+  Serial.print(averageRead(B2P)/B2P_COEFF,3);
   Serial.print(")   ");
-  Serial.print(averageRead(BATTERY),HEX);
+  Serial.print(averageRead(BATTERY),3);
   Serial.print(" BATTERY  (");
-  Serial.print(analogRead(BATTERY),HEX);
+  Serial.print(averageRead(BATTERY)/BATTERY_COEFF,3);
   Serial.print(")      TH1: ");
   Serial.print(analogRead(B1THERM),HEX);
   Serial.print("  TH2: ");
@@ -94,8 +99,8 @@ void loop() {
   }
 }
 
-int averageRead(int pin) {
-  unsigned long analogAdder = 0;
+float averageRead(int pin) {
+  float analogAdder = 0;
   for (int i = 0; i < 50; i++) analogAdder += analogRead(pin);
   analogAdder /= 50;
   return analogAdder;
@@ -160,3 +165,24 @@ void setPwmFrequency(int pin, int divisor) {
   }
 }
 
+/*     voltage: 4.0v        8.0v             12.0v
+ *     206 per volt         123 per volt     82 per volt
+ *     339 B1P  (33A)   3DD B2P  (3E0)   3E3 BATTERY  (3E3)      TH1: 304  TH2: 312  TH3: 30C
+ *     339 B1P  (33A)   3DC B2P  (3DF)   3E0 BATTERY  (3E2)      TH1: 329  TH2: 319  TH3: 309
+ *     339 B1P  (339)   3DD B2P  (3DF)   3E3 BATTERY  (3E0)      TH1: 321  TH2: 312  TH3: 30D
+ *     339 B1P  (33A)   3DA B2P  (3E0)   3E0 BATTERY  (3E2)      TH1: 308  TH2: 30E  TH3: 30D
+ *     339 B1P  (338)   3DA B2P  (3E0)   3E0 BATTERY  (3E3)      TH1: 329  TH2: 317  TH3: 30C
+ *     33A B1P  (339)   3DC B2P  (3E1)   3E0 BATTERY  (3E1)      TH1: 326  TH2: 311  TH3: 30C
+ *     33A B1P  (339)   3DA B2P  (3DF)   3E2 BATTERY  (3E3)      TH1: 300  TH2: 30F  TH3: 30D
+ *     339 B1P  (339)   3DD B2P  (3C8)   3E1 BATTERY  (3E5)      TH1: 305  TH2: 310  TH3: 30C
+ *     339 B1P  (339)   3DC B2P  (3DE)   3E2 BATTERY  (3E1)      TH1: 30A  TH2: 312  TH3: 30C
+ *     339 B1P  (339)   3DD B2P  (3DF)   3E1 BATTERY  (3E4)      TH1: 31D  TH2: 30F  TH3: 30F
+ *     339 B1P  (335)   3DA B2P  (3E1)   3E1 BATTERY  (3E1)      TH1: 326  TH2: 318  TH3: 30C
+ *     339 B1P  (338)   3DA B2P  (3DF)   3E1 BATTERY  (3E5)      TH1: 320  TH2: 315  TH3: 308
+ *     33A B1P  (338)   3DB B2P  (3E4)   3E2 BATTERY  (3E1)      TH1: 31A  TH2: 30D  TH3: 30D
+ *     339 B1P  (33A)   3DA B2P  (3DF)   3E1 BATTERY  (3E3)      TH1: 308  TH2: 311  TH3: 30D
+ *     339 B1P  (339)   3DA B2P  (3DF)   3E1 BATTERY  (3E4)      TH1: 325  TH2: 316  TH3: 309
+ *     339 B1P  (339)   3DD B2P  (3DF)   3E3 BATTERY  (3E0)      TH1: 326  TH2: 318  TH3: 30A
+ *     339 B1P  (339)   3DC B2P  (3DF)   3E2 BATTERY  (3E0)      TH1: 324  TH2: 317  TH3: 30C
+ *     339 B1P  (339)   3DD B2P  (3DF)   3E3 BATTERY  (3E1)      TH1: 326  TH2: 315  TH3: 30D
+ */
