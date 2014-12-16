@@ -27,6 +27,7 @@ int jumpVal = 1;
 int offCount = 0;  // counts how many off requests we've seen
 #define OFF_THRESH 10 // how many to make us turn off
 unsigned long senseRead = 0;
+#define DELAYFACTOR 64 // millis() and delay() this many times faster
 
 void setup() {
 pinMode(ONFET,OUTPUT);
@@ -44,7 +45,7 @@ pinMode(CCFL_PIN,OUTPUT); // 32khz
   CLKPR = 0x00;  // set divisor to 1  see page 38
   TCCR0A = 0b10100011;
   TCCR0B = 0b00000001;
-  Serial.begin(38400);  // actually 38400 behaves like 19200
+  Serial.begin(38400);
 }
 
 void loop() {
@@ -80,7 +81,7 @@ void loop() {
   Serial.print("  TH3: ");
   Serial.println(analogRead(B3THERM),HEX);
 
-  delay(4000); // actual time 1/32 this number of milliseconds
+  delay(125*DELAYFACTOR); // actual time = n * DELAYFACTOR milliseconds
   
   if (digitalRead(BUTTON_SENSE)) {
     Serial.print("+");
@@ -94,8 +95,10 @@ void loop() {
     digitalWrite(LED_PIN,HIGH);  // LED ON
     digitalWrite(ONFET,LOW); // turn power off
     analogWrite(CCFL_PIN,0); // turn off ccfl
-    while (true);  // wait here until they let go of button
-    // brightness = 400;
+    while (true) { // wait here until they let go of button
+      Serial.println("one second");
+      delay((unsigned)1000*DELAYFACTOR);
+    }
   }
 }
 
