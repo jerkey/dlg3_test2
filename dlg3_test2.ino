@@ -28,6 +28,7 @@ int offCount = 0;  // counts how many off requests we've seen
 #define OFF_THRESH 10 // how many to make us turn off
 unsigned long senseRead = 0;
 #define DELAYFACTOR 64 // millis() and delay() this many times faster
+float batt1,batt2,batt3; // voltage of battery cells
 
 void setup() {
 pinMode(ONFET,OUTPUT);
@@ -62,7 +63,7 @@ void loop() {
     if (pwmVal < 1) pwmVal = 1;  
     analogWrite(CCFL_PIN,pwmVal);
   }
-
+  getBattVoltages();
   printAnalogs();
 
   delay(125*DELAYFACTOR); // actual time = n * DELAYFACTOR milliseconds
@@ -82,6 +83,12 @@ float averageRead(int pin) {
   for (int i = 0; i < 50; i++) analogAdder += analogRead(pin);
   analogAdder /= 50;
   return analogAdder;
+}
+
+void getBattVoltages() {
+  batt1 = averageRead(B1P) / B1P_COEFF;
+  batt2 = (averageRead(B2P) / B2P_COEFF) - batt1;
+  batt3 = (averageRead(BATTERY) / BATTERY_COEFF) - batt2 - batt1;
 }
 
 void die(String reason) {
