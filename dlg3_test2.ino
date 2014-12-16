@@ -63,6 +63,39 @@ void loop() {
     analogWrite(CCFL_PIN,pwmVal);
   }
 
+  printAnalogs();
+
+  delay(125*DELAYFACTOR); // actual time = n * DELAYFACTOR milliseconds
+  
+  if (digitalRead(BUTTON_SENSE)) {
+    Serial.print("+");
+    offCount++;
+  } else {
+    offCount = 0; // if (--offCount < 0) offCount = 0;
+  }
+
+  if (offCount > OFF_THRESH) die("offCount > OFF_THRESH");
+}
+
+float averageRead(int pin) {
+  float analogAdder = 0;
+  for (int i = 0; i < 50; i++) analogAdder += analogRead(pin);
+  analogAdder /= 50;
+  return analogAdder;
+}
+
+void die(String reason) {
+  Serial.println("off because: "+reason);
+  digitalWrite(LED_PIN,HIGH);  // LED ON
+  digitalWrite(ONFET,LOW); // turn power off
+  analogWrite(CCFL_PIN,0); // turn off ccfl
+  while (true) { // wait here until they let go of button
+    printAnalogs();
+    delay((unsigned)1000*DELAYFACTOR);
+  }
+}
+
+void printAnalogs() {
   Serial.print(averageRead(B1P),3);
   Serial.print(" B1P  (");
   Serial.print(averageRead(B1P)/B1P_COEFF,3);
@@ -80,33 +113,6 @@ void loop() {
   Serial.print(analogRead(B2THERM),HEX);
   Serial.print("  TH3: ");
   Serial.println(analogRead(B3THERM),HEX);
-
-  delay(125*DELAYFACTOR); // actual time = n * DELAYFACTOR milliseconds
-  
-  if (digitalRead(BUTTON_SENSE)) {
-    Serial.print("+");
-    offCount++;
-  } else {
-    offCount = 0; // if (--offCount < 0) offCount = 0;
-  }
-
-  if (offCount > OFF_THRESH) {
-    Serial.println("off");
-    digitalWrite(LED_PIN,HIGH);  // LED ON
-    digitalWrite(ONFET,LOW); // turn power off
-    analogWrite(CCFL_PIN,0); // turn off ccfl
-    while (true) { // wait here until they let go of button
-      Serial.println("one second");
-      delay((unsigned)1000*DELAYFACTOR);
-    }
-  }
-}
-
-float averageRead(int pin) {
-  float analogAdder = 0;
-  for (int i = 0; i < 50; i++) analogAdder += analogRead(pin);
-  analogAdder /= 50;
-  return analogAdder;
 }
 
 void setPwmFrequency(int pin, int divisor) {
