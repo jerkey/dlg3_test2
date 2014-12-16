@@ -21,7 +21,7 @@ int pwmVal = 80;
 int jumpVal = 1;
 int offCount = 0;  // counts how many off requests we've seen
 #define OFF_THRESH 10 // how many to make us turn off
-unsigned long senseRead, analogAdder = 0;
+unsigned long senseRead = 0;
 
 void setup() {
 pinMode(ONFET,OUTPUT);
@@ -43,9 +43,7 @@ pinMode(CCFL_PIN,OUTPUT); // 32khz
 }
 
 void loop() {
-  senseRead = 0;
-  for (int i = 0; i < 50; i++) senseRead += analogRead(CCFL_SENSE);
-  senseRead /= 50;
+  senseRead = averageRead(CCFL_SENSE);
   if (senseRead < brightness) {
     digitalWrite(LED_PIN,HIGH);  // LED ON
     pwmVal += jumpVal;
@@ -59,12 +57,23 @@ void loop() {
     analogWrite(CCFL_PIN,pwmVal);
   }
 
-  analogAdder = 0;
-  for (int i = 0; i < 50; i++) analogAdder += analogRead(BATTERY);
-  analogAdder /= 50;
-  Serial.print(analogAdder,HEX);
-  Serial.print("battery    (");
-  Serial.println(analogRead(BATTERY),HEX);
+  Serial.print(averageRead(B1P),HEX);
+  Serial.print(" B1P  (");
+  Serial.print(analogRead(B1P),HEX);
+  Serial.print(")   ");
+  Serial.print(averageRead(B2P),HEX);
+  Serial.print(" B2P  (");
+  Serial.print(analogRead(B2P),HEX);
+  Serial.print(")   ");
+  Serial.print(averageRead(BATTERY),HEX);
+  Serial.print(" BATTERY  (");
+  Serial.print(analogRead(BATTERY),HEX);
+  Serial.print(")      TH1: ");
+  Serial.print(analogRead(B1THERM),HEX);
+  Serial.print("  TH2: ");
+  Serial.print(analogRead(B2THERM),HEX);
+  Serial.print("  TH3: ");
+  Serial.println(analogRead(B3THERM),HEX);
 
   delay(4000); // actual time 1/32 this number of milliseconds
   
@@ -83,6 +92,13 @@ void loop() {
     while (true);  // wait here until they let go of button
     // brightness = 400;
   }
+}
+
+int averageRead(int pin) {
+  unsigned long analogAdder = 0;
+  for (int i = 0; i < 50; i++) analogAdder += analogRead(pin);
+  analogAdder /= 50;
+  return analogAdder;
 }
 
 void setPwmFrequency(int pin, int divisor) {
