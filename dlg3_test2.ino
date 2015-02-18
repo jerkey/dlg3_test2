@@ -48,7 +48,7 @@ pinMode(CCFL_PIN,OUTPUT); // 32khz
   CLKPR = 0x00;  // set divisor to 1  see page 38
   TCCR0A = 0b10100011;
   TCCR0B = 0b00000001;
-  Serial.begin(38400);
+  Serial.begin(76800); // to get 38400 baud, put 76800 baud here
 }
 
 void loop() {
@@ -112,6 +112,8 @@ void die(String reason) {
 }
 
 void printAnalogs() {
+  Serial.print(millis());
+  Serial.print("  ");
   if (debugMode > 0) { // print detailed battery analogRead information
     Serial.print(averageRead(B1P),3);
     Serial.print(" B1P  (");
