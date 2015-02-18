@@ -106,6 +106,7 @@ void die(String reason) {
   analogWrite(CCFL_PIN,0); // turn off ccfl
   while (true) { // wait here until they let go of button
     Serial.print(reason);
+    getBattVoltages();
     printAnalogs();
     delay((unsigned)1000*DELAYFACTOR);
   }
