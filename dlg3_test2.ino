@@ -16,6 +16,7 @@
 #define CCFL_SENSE   A6
 #define JACK_SENSE   A7
 
+#define JACK_COEFF    33.533
 #define B1P_COEFF     203.518 // ADC counts per volt
 #define B2P_COEFF     122.460
 #define BATTERY_COEFF 81.936
@@ -138,7 +139,11 @@ void printAnalogs() {
     Serial.print(averageRead(BATTERY),3);
     Serial.print(" BATTERY  (");
     Serial.print(averageRead(BATTERY)/BATTERY_COEFF,3);
-    Serial.print(")      DRAIN1: ");
+    Serial.print(")   ");
+    Serial.print(averageRead(JACK_SENSE)/JACK_COEFF,3);
+    Serial.print(" JACK_SENSE  (");
+    Serial.print(averageRead(JACK_SENSE));
+    Serial.print(")    DRAIN1: ");
     Serial.print(drainPWM[0]);
     Serial.print("  DRAIN2: ");
     Serial.print(drainPWM[1]);
