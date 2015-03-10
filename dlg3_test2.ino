@@ -35,6 +35,11 @@ int debugMode = 0; // allows for debugging modes to be triggered in production s
 void setup() {
 pinMode(ONFET,OUTPUT);
 digitalWrite(ONFET,HIGH);  // keep power on
+pinMode(CHARGE123,OUTPUT);
+pinMode(DRAIN1   ,OUTPUT);
+pinMode(DRAIN2   ,OUTPUT);
+pinMode(DRAIN3   ,OUTPUT);
+pinMode(BOOST    ,OUTPUT);
 
 pinMode(LED_PIN,OUTPUT);
 digitalWrite(LED_PIN,HIGH);  // LED ON
@@ -49,6 +54,43 @@ pinMode(CCFL_PIN,OUTPUT); // 32khz
   TCCR0A = 0b10100011;
   TCCR0B = 0b00000001;
   Serial.begin(76800); // to get 38400 baud, put 76800 baud here
+  while (true) {
+    while (Serial.available() == 0) {}
+    char inchar = Serial.read();
+    Serial.println(inchar);
+    if (inchar == 'c') {
+        digitalWrite(CHARGE123,!digitalRead(CHARGE123));
+        Serial.print(digitalRead(CHARGE123));
+        Serial.println("CHARGE123");
+        } else
+    if (inchar == '1') {
+        digitalWrite(DRAIN1,!digitalRead(DRAIN1));
+        Serial.print(digitalRead(DRAIN1));
+        Serial.println("DRAIN1");
+        } else
+    if (inchar == '2') {
+        digitalWrite(DRAIN2,!digitalRead(DRAIN2));
+        Serial.print(digitalRead(DRAIN2));
+        Serial.println("DRAIN2");
+        } else
+    if (inchar == '3') {
+        digitalWrite(DRAIN3,!digitalRead(DRAIN3));
+        Serial.print(digitalRead(DRAIN3));
+        Serial.println("DRAIN3");
+        } else
+    if (inchar == 'b') {
+        digitalWrite(BOOST,!digitalRead(BOOST));
+        Serial.print(digitalRead(BOOST));
+        Serial.println("BOOST");
+        } else
+    if (inchar == 'l') {
+        digitalWrite(LED_PIN,!digitalRead(LED_PIN));
+        Serial.print(digitalRead(LED_PIN));
+        Serial.println("LED_PIN");
+        } else {
+        Serial.println("c=charge123, 1=drain1, 2=drain2, 3=drain3, b=boost, l=led_pin");
+    }
+  }
 }
 
 void loop() {
