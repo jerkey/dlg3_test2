@@ -30,7 +30,9 @@ int offCount = 0;  // counts how many off requests we've seen
 unsigned long senseRead = 0;
 #define DELAYFACTOR 64 // millis() and delay() this many times faster
 float batt1,batt2,batt3; // voltage of battery cells
-int debugMode = 0; // allows for debugging modes to be triggered in production software
+unsigned short debugMode,lightMode = 0; // allows for debugging modes to be triggered in production software
+unsigned short drainPWM[3] = {0,0,0};
+unsigned short lastDrainPWM[3] = {0,0,0}; // to prevent unnecessary analogWrites
 
 void setup() {
 pinMode(ONFET,OUTPUT);
@@ -54,47 +56,10 @@ pinMode(CCFL_PIN,OUTPUT); // 32khz
   TCCR0A = 0b10100011;
   TCCR0B = 0b00000001;
   Serial.begin(76800); // to get 38400 baud, put 76800 baud here
-  while (true) {
-    while (Serial.available() == 0) {}
-    char inchar = Serial.read();
-    Serial.println(inchar);
-    if (inchar == 'c') {
-        digitalWrite(CHARGE123,!digitalRead(CHARGE123));
-        Serial.print(digitalRead(CHARGE123));
-        Serial.println("CHARGE123");
-        } else
-    if (inchar == '1') {
-        digitalWrite(DRAIN1,!digitalRead(DRAIN1));
-        Serial.print(digitalRead(DRAIN1));
-        Serial.println("DRAIN1");
-        } else
-    if (inchar == '2') {
-        digitalWrite(DRAIN2,!digitalRead(DRAIN2));
-        Serial.print(digitalRead(DRAIN2));
-        Serial.println("DRAIN2");
-        } else
-    if (inchar == '3') {
-        digitalWrite(DRAIN3,!digitalRead(DRAIN3));
-        Serial.print(digitalRead(DRAIN3));
-        Serial.println("DRAIN3");
-        } else
-    if (inchar == 'b') {
-        digitalWrite(BOOST,!digitalRead(BOOST));
-        Serial.print(digitalRead(BOOST));
-        Serial.println("BOOST");
-        } else
-    if (inchar == 'l') {
-        digitalWrite(LED_PIN,!digitalRead(LED_PIN));
-        Serial.print(digitalRead(LED_PIN));
-        Serial.println("LED_PIN");
-        } else {
-        Serial.println("c=charge123, 1=drain1, 2=drain2, 3=drain3, b=boost, l=led_pin");
-    }
-  }
 }
 
 void loop() {
-  if (debugMode == 0) {
+  if (lightMode == 0) {
     senseRead = averageRead(CCFL_SENSE);
     if (senseRead < brightness) {
       digitalWrite(LED_PIN,HIGH);  // LED ON
@@ -108,6 +73,8 @@ void loop() {
       if (pwmVal < 1) pwmVal = 1;
       analogWrite(CCFL_PIN,pwmVal);
     }
+  } else {
+    analogWrite(CCFL_PIN,0);
   }
   getBattVoltages();
   printAnalogs();
@@ -126,6 +93,8 @@ void loop() {
   }
 
   if (offCount > OFF_THRESH) die("offCount > OFF_THRESH");
+  handleSerial(); // do whatever user wants
+  updateDrains(); // make sure PWMs are set
 }
 
 float averageRead(int pin) {
@@ -169,7 +138,13 @@ void printAnalogs() {
     Serial.print(averageRead(BATTERY),3);
     Serial.print(" BATTERY  (");
     Serial.print(averageRead(BATTERY)/BATTERY_COEFF,3);
-    Serial.print(")      TH1: ");
+    Serial.print(")      DRAIN1: ");
+    Serial.print(drainPWM[0]);
+    Serial.print("  DRAIN2: ");
+    Serial.print(drainPWM[1]);
+    Serial.print("  DRAIN3: ");
+    Serial.print(drainPWM[2]);
+    Serial.print("  TH1: ");
     Serial.print(averageRead(B1THERM),2);
     Serial.print("  TH2: ");
     Serial.print(averageRead(B2THERM),2);
@@ -184,6 +159,76 @@ void printAnalogs() {
     Serial.print(batt3,3);
   }
   Serial.println("");
+}
+
+void updateDrains() {
+  if (drainPWM[0] != lastDrainPWM[0]) {
+    analogWrite(DRAIN1,drainPWM[0]);
+    lastDrainPWM[0]=drainPWM[0];
+  }
+  if (drainPWM[1] != lastDrainPWM[1]) {
+    analogWrite(DRAIN2,drainPWM[1]);
+    lastDrainPWM[1]=drainPWM[1];
+  }
+  if (drainPWM[2] != lastDrainPWM[2]) {
+    analogWrite(DRAIN3,drainPWM[2]);
+    lastDrainPWM[2]=drainPWM[2];
+  }
+}
+
+void handleSerial() {
+  if (Serial.available() > 0) {
+    char inchar = Serial.read();
+    Serial.println(inchar);
+    if (inchar == 'd') {
+      debugMode ^=1;
+      Serial.print(debugMode);
+      Serial.println("debugMode");
+    } else
+    if (inchar == 'l') {
+      lightMode ^=1;
+      Serial.print(lightMode);
+      Serial.println("lightMode");
+    } else
+    if (inchar == '1') {
+      if (drainPWM[0] < 254) drainPWM[0]=254;
+      Serial.print(drainPWM[0]);
+      Serial.println("DRAIN1");
+    } else
+    if (inchar == '2') {
+      if (drainPWM[1] < 254) drainPWM[1]=254;
+      Serial.print(drainPWM[1]);
+      Serial.println("DRAIN2");
+    } else
+    if (inchar == '3') {
+      if (drainPWM[2] < 254) drainPWM[2]=254;
+      Serial.print(drainPWM[2]);
+      Serial.println("DRAIN3");
+    } else
+    if (inchar == '!') {
+      drainPWM[0] = 0;
+      Serial.print(drainPWM[0]);
+      Serial.println("DRAIN1");
+    } else
+    if (inchar == '@') {
+      drainPWM[1] = 0;
+      Serial.print(drainPWM[1]);
+      Serial.println("DRAIN2");
+    } else
+    if (inchar == '#') {
+      drainPWM[2] = 0;
+      Serial.print(drainPWM[2]);
+      Serial.println("DRAIN3");
+    } else
+    if (inchar == 'r') {
+      drainPWM[0]=0;
+      drainPWM[1]=0;
+      drainPWM[2]=0;
+      Serial.println("DRAIN1,2,3PWM=0");
+    } else {
+      Serial.println("d=debugmode, 1=drain1, 2=drain2, 3=drain3, b=boost, l=light, r=resetPWMs");
+    }
+  }
 }
 
 void setPwmFrequency(int pin, int divisor) {
