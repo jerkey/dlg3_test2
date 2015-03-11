@@ -40,6 +40,9 @@ float batt1,batt2,batt3; // voltage of battery cells
 unsigned short debugMode,lightMode = 0; // allows for debugging modes to be triggered in production software
 unsigned short drainPWM[3] = {0,0,0};
 unsigned short lastDrainPWM[3] = {0,0,0}; // to prevent unnecessary analogWrites
+int chargePWM=255; // charge123 is a PFET, 255 = none, 254=min 1=max charging
+int lastChargePWM = 0; // different so updatePWM() sets it immediately
+int boostPWM,lastBoostPWM = 0;
 
 void setup() {
 pinMode(ONFET,OUTPUT);
@@ -54,13 +57,14 @@ pinMode(LED_PIN,OUTPUT);
 digitalWrite(LED_PIN,HIGH);  // LED ON
 
 pinMode(CCFL_PIN,OUTPUT); // 32khz
-// setPwmFrequency(CCFL_PIN,1); // set PWM freq to 31,250 Hz
+setPwmFrequency(CHARGE123,1); // timer1 = pin 9,10 = CHARGE123, DRAIN3
+setPwmFrequency(DRAIN2,1); // timer2 = pin 3,11 = DRAIN2, DRAIN1
 // WGM02 = 0, WGM01 = 1, WGM00 = 1 see page 108
 // COM0B1 = 1, COM0B0 = 0 see page 107
 // CS02 = 0, CS01 = 0, CS00 = 1 see page 110
   CLKPR = 0x80;  // enable write to clkps see page 37
   CLKPR = 0x00;  // set divisor to 1  see page 38
-  TCCR0A = 0b10100011;
+  TCCR0A = 0b10100011; // timer0 affects pin 5,6 = CCFL_PIN,BOOST
   TCCR0B = 0b00000001;
   Serial.begin(76800); // to get 38400 baud, put 76800 baud here
 }
@@ -135,32 +139,36 @@ void printAnalogs() {
   Serial.print("  ");
   if (debugMode > 0) { // print detailed battery analogRead information
     Serial.print(averageRead(B1P),3);
-    Serial.print(" B1P  (");
+    Serial.print(" B1P (");
     Serial.print(averageRead(B1P)/B1P_COEFF,3);
-    Serial.print(")   ");
+    Serial.print(")  ");
     Serial.print(averageRead(B2P),3);
-    Serial.print(" B2P  (");
+    Serial.print(" B2P (");
     Serial.print(averageRead(B2P)/B2P_COEFF,3);
-    Serial.print(")   ");
+    Serial.print(")  ");
     Serial.print(averageRead(BATTERY),3);
-    Serial.print(" BATTERY  (");
+    Serial.print(" BATTERY (");
     Serial.print(averageRead(BATTERY)/BATTERY_COEFF,3);
-    Serial.print(")   ");
+    Serial.print(")  ");
     Serial.print(averageRead(JACK_SENSE)/JACK_COEFF,3);
-    Serial.print(" JACK_SENSE  (");
+    Serial.print(" JACK_PWR (");
     Serial.print(averageRead(JACK_SENSE));
-    Serial.print(")    DRAIN1: ");
+    Serial.print(")  CHARGE123: ");
+    Serial.print(chargePWM);
+    Serial.print("  DRAIN1: ");
     Serial.print(drainPWM[0]);
     Serial.print("  DRAIN2: ");
     Serial.print(drainPWM[1]);
     Serial.print("  DRAIN3: ");
     Serial.print(drainPWM[2]);
-    Serial.print("  TH1: ");
-    Serial.print(averageRead(B1THERM),2);
-    Serial.print("  TH2: ");
-    Serial.print(averageRead(B2THERM),2);
-    Serial.print("  TH3: ");
-    Serial.print(averageRead(B3THERM),2);
+    Serial.print("  BOOST: ");
+    Serial.print(boostPWM);
+    Serial.print("  TH1:");
+    Serial.print(averageRead(B1THERM),1);
+    Serial.print("  TH2:");
+    Serial.print(averageRead(B2THERM),1);
+    Serial.print("  TH3:");
+    Serial.print(averageRead(B3THERM),1);
   } else {
     Serial.print("batt1=");
     Serial.print(batt1,3);
@@ -168,6 +176,8 @@ void printAnalogs() {
     Serial.print(batt2,3);
     Serial.print("   batt3=");
     Serial.print(batt3,3);
+    Serial.print(" JACK_PWR: ");
+    Serial.print(averageRead(JACK_SENSE)/JACK_COEFF,3);
   }
   Serial.println("");
 }
@@ -184,6 +194,14 @@ void updateDrains() {
   if (drainPWM[2] != lastDrainPWM[2]) {
     analogWrite(DRAIN3,drainPWM[2]);
     lastDrainPWM[2]=drainPWM[2];
+  }
+  if (chargePWM != lastChargePWM) {
+    analogWrite(CHARGE123,chargePWM);
+    lastChargePWM=chargePWM;
+  }
+  if (boostPWM != lastBoostPWM) {
+    analogWrite(BOOST,boostPWM);
+    lastBoostPWM=boostPWM;
   }
 }
 
@@ -231,13 +249,37 @@ void handleSerial() {
       Serial.print(drainPWM[2]);
       Serial.println("DRAIN3");
     } else
+    if (inchar == 'b') {
+      boostPWM += 5;
+      if (boostPWM > 254) boostPWM = 254;
+      Serial.print(boostPWM);
+      Serial.println("BOOST");
+    } else
+    if (inchar == 'B') {
+      boostPWM -= 5;
+      if (boostPWM < 0) boostPWM = 0;
+      Serial.print(boostPWM);
+      Serial.println("BOOST");
+    } else
+    if (inchar == 'C') {
+      chargePWM += 5;
+      if (chargePWM > 255) chargePWM = 255;
+      Serial.print(chargePWM);
+      Serial.println("CHARGE123");
+    } else
+    if (inchar == 'c') {
+      chargePWM -= 5;
+      if (chargePWM < 1) chargePWM = 1;
+      Serial.print(chargePWM);
+      Serial.println("CHARGE123");
+    } else
     if (inchar == 'r') {
       drainPWM[0]=0;
       drainPWM[1]=0;
       drainPWM[2]=0;
       Serial.println("DRAIN1,2,3PWM=0");
     } else {
-      Serial.println("d=debugmode, 1=drain1, 2=drain2, 3=drain3, b=boost, l=light, r=resetPWMs");
+      Serial.println("d=debugmode, 1=drain1, 2=drain2, 3=drain3, b=boost, l=light, c=charge123, r=resetPWMs");
     }
   }
 }
