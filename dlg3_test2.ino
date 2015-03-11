@@ -278,8 +278,12 @@ void handleSerial() {
       drainPWM[1]=0;
       drainPWM[2]=0;
       Serial.println("DRAIN1,2,3PWM=0");
+    } else
+    if (inchar == 'X') {
+      Serial.println("power off!");
+      digitalWrite(ONFET,LOW);
     } else {
-      Serial.println("d=debugmode, 1=drain1, 2=drain2, 3=drain3, b=boost, l=light, c=charge123, r=resetPWMs");
+      Serial.println("d=debugmode, 1=drain1, 2=drain2, 3=drain3, b=boost, l=light, c=charge123, r=resetPWMs, X=off");
     }
   }
 }
