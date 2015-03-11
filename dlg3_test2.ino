@@ -15,6 +15,12 @@
 #define BATTERY      A5
 #define CCFL_SENSE   A6
 #define JACK_SENSE   A7
+// TODO: tester for CHARGE123 output
+// TODO: tester for BOOST
+// TODO: test with actual charging
+// TODO: write charging into master branch
+// TODO: write balancing algorithm in master branch
+// TODO: write BOOSTING algorithm in master branch
 
 #define JACK_COEFF    33.533
 #define B1P_COEFF     203.518 // ADC counts per volt
