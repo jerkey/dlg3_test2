@@ -37,7 +37,7 @@ int offCount = 0;  // counts how many off requests we've seen
 unsigned long senseRead = 0;
 #define DELAYFACTOR 64 // millis() and delay() this many times faster
 float batt1,batt2,batt3; // voltage of battery cells
-unsigned short debugMode,lightMode = 0; // allows for debugging modes to be triggered in production software
+unsigned short debugMode = 0, lightMode = 0; // allows for debugging modes to be triggered in production software
 unsigned short drainPWM[3] = {0,0,0};
 unsigned short lastDrainPWM[3] = {0,0,0}; // to prevent unnecessary analogWrites
 int chargePWM=255; // charge123 is a PFET, 255 = none, 254=min 1=max charging
