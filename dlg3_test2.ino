@@ -57,8 +57,8 @@ pinMode(LED_PIN,OUTPUT);
 digitalWrite(LED_PIN,HIGH);  // LED ON
 
 pinMode(CCFL_PIN,OUTPUT); // 32khz
-setPwmFrequency(CHARGE123,1); // timer1 = pin 9,10 = CHARGE123, DRAIN3
-setPwmFrequency(DRAIN2,1); // timer2 = pin 3,11 = DRAIN2, DRAIN1
+setPwmFrequency(CHARGE123,8); // timer1 = pin 9,10 = CHARGE123, DRAIN3
+setPwmFrequency(DRAIN2,8); // timer2 = pin 3,11 = DRAIN2, DRAIN1
 // WGM02 = 0, WGM01 = 1, WGM00 = 1 see page 108
 // COM0B1 = 1, COM0B0 = 0 see page 107
 // CS02 = 0, CS01 = 0, CS00 = 1 see page 110
