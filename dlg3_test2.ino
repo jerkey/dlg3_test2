@@ -2,11 +2,12 @@
 #define ONFET        4  // PD4/4
 #define CCFL_PIN     5  // pin 10 old, pin 5 new (for 32khz special)
 #define LED_PIN      7  // PD7/7
-#define CHARGE123    9  // PB1/9 prototype
+// #define CHARGE123    9  // PB1/9 prototype
 #define DRAIN1       11 // PB3/11 prototype
 #define DRAIN2       3  // PD3/3
 #define DRAIN3       10 // PB2/10 prototype
 #define BOOST        6  // PD6/6 prototype
+#define CHARGE123    BOOST // we changed the board
 #define B1THERM      A0
 #define B2THERM      A1
 #define B3THERM      A2
@@ -15,18 +16,18 @@
 #define BATTERY      A5
 #define CCFL_SENSE   A6
 #define JACK_SENSE   A7
-// TODO: tester for CHARGE123 output
-// TODO: tester for BOOST
+// TODO: tester for new CHARGE123 output
 // TODO: test with actual charging
 // TODO: write charging into master branch
 // TODO: write balancing algorithm in master branch
-// TODO: write BOOSTING algorithm in master branch
 
-#define JACK_COEFF    33.533
+// #define JACK_COEFF    33.533
 #define B1P_COEFF     203.518 // ADC counts per volt
 #define B2P_COEFF     122.460
 #define BATTERY_COEFF 81.936
-#define BATT_EMPTY   2.95 // how many volts to DIE at
+#define BATT_EMPTY   2.75 // how many volts to DIE at
+#define JACK_COEFF (BATTERY_COEFF ) // using same sense resistors but..
+#define R901_OHMS 0.462 / 0.92 // ohms of R between JACK_SENSE and BATTERY
 
 int brightness = 450; // 175 with built-in vref
 #define MAX_PWM 250
@@ -35,14 +36,14 @@ int jumpVal = 1;
 int offCount = 0;  // counts how many off requests we've seen
 #define OFF_THRESH 5 // how many to make us turn off
 unsigned long senseRead = 0;
-#define DELAYFACTOR 64 // millis() and delay() this many times faster
-float batt1,batt2,batt3; // voltage of battery cells
+#define DELAYFACTOR 32 // millis() and delay() this many times faster
+float batt1,batt2,batt3,battery_total ; // voltage of battery cells and total
+float r901, chargeI; // voltage at R901_OHMS, current across it
 unsigned short debugMode = 0, lightMode = 0; // allows for debugging modes to be triggered in production software
 unsigned short drainPWM[3] = {0,0,0};
 unsigned short lastDrainPWM[3] = {0,0,0}; // to prevent unnecessary analogWrites
 int chargePWM=255; // charge123 is a PFET, 255 = none, 254=min 1=max charging
 int lastChargePWM = 0; // different so updatePWM() sets it immediately
-int boostPWM,lastBoostPWM = 0;
 
 void setup() {
 pinMode(ONFET,OUTPUT);
@@ -51,13 +52,12 @@ pinMode(CHARGE123,OUTPUT);
 pinMode(DRAIN1   ,OUTPUT);
 pinMode(DRAIN2   ,OUTPUT);
 pinMode(DRAIN3   ,OUTPUT);
-pinMode(BOOST    ,OUTPUT);
 
 pinMode(LED_PIN,OUTPUT);
 digitalWrite(LED_PIN,HIGH);  // LED ON
 
 pinMode(CCFL_PIN,OUTPUT); // 32khz
-setPwmFrequency(CHARGE123,8); // timer1 = pin 9,10 = CHARGE123, DRAIN3
+setPwmFrequency(DRAIN3,8); // timer1 = pin 9,10 = CHARGE123, DRAIN3
 setPwmFrequency(DRAIN2,8); // timer2 = pin 3,11 = DRAIN2, DRAIN1
 // WGM02 = 0, WGM01 = 1, WGM00 = 1 see page 108
 // COM0B1 = 1, COM0B0 = 0 see page 107
@@ -118,7 +118,10 @@ float averageRead(int pin) {
 void getBattVoltages() {
   batt1 = averageRead(B1P) / B1P_COEFF;
   batt2 = (averageRead(B2P) / B2P_COEFF) - batt1;
-  batt3 = (averageRead(BATTERY) / BATTERY_COEFF) - batt2 - batt1;
+  battery_total = averageRead(BATTERY) / BATTERY_COEFF;
+  batt3 = battery_total - batt2 - batt1;
+  r901 = averageRead(JACK_SENSE) / JACK_COEFF;
+  chargeI = (r901 - battery_total) / R901_OHMS;
 }
 
 void die(String reason) {
@@ -148,12 +151,16 @@ void printAnalogs() {
     Serial.print(")  ");
     Serial.print(averageRead(BATTERY),3);
     Serial.print(" BATTERY (");
-    Serial.print(averageRead(BATTERY)/BATTERY_COEFF,3);
+    float battery_print = averageRead(BATTERY)/BATTERY_COEFF;
+    Serial.print(battery_print,3);
     Serial.print(")  ");
-    Serial.print(averageRead(JACK_SENSE)/JACK_COEFF,3);
-    Serial.print(" JACK_PWR (");
-    Serial.print(averageRead(JACK_SENSE));
-    Serial.print(")  CHARGE123: ");
+    float jack_print = averageRead(JACK_SENSE)/JACK_COEFF;
+    Serial.print(jack_print,3);
+    Serial.print(" R901 (");
+    Serial.print(averageRead(JACK_SENSE),3);
+    Serial.print(")  CHARGEI: ");
+    Serial.print((jack_print - battery_print) / R901_OHMS,2);
+    Serial.print("  CHARGE123: ");
     Serial.print(chargePWM);
     Serial.print("  DRAIN1: ");
     Serial.print(drainPWM[0]);
@@ -161,8 +168,6 @@ void printAnalogs() {
     Serial.print(drainPWM[1]);
     Serial.print("  DRAIN3: ");
     Serial.print(drainPWM[2]);
-    Serial.print("  BOOST: ");
-    Serial.print(boostPWM);
     Serial.print("  TH1:");
     Serial.print(averageRead(B1THERM),1);
     Serial.print("  TH2:");
@@ -176,8 +181,8 @@ void printAnalogs() {
     Serial.print(batt2,3);
     Serial.print("   batt3=");
     Serial.print(batt3,3);
-    Serial.print(" JACK_PWR: ");
-    Serial.print(averageRead(JACK_SENSE)/JACK_COEFF,3);
+    Serial.print("  CHARGEI: ");
+    Serial.print(chargeI,2);
   }
   Serial.println("");
 }
@@ -198,10 +203,6 @@ void updateDrains() {
   if (chargePWM != lastChargePWM) {
     analogWrite(CHARGE123,chargePWM);
     lastChargePWM=chargePWM;
-  }
-  if (boostPWM != lastBoostPWM) {
-    analogWrite(BOOST,boostPWM);
-    lastBoostPWM=boostPWM;
   }
 }
 
@@ -249,18 +250,6 @@ void handleSerial() {
       Serial.print(drainPWM[2]);
       Serial.println("DRAIN3");
     } else
-    if (inchar == 'b') {
-      boostPWM += 5;
-      if (boostPWM > 254) boostPWM = 254;
-      Serial.print(boostPWM);
-      Serial.println("BOOST");
-    } else
-    if (inchar == 'B') {
-      boostPWM -= 5;
-      if (boostPWM < 0) boostPWM = 0;
-      Serial.print(boostPWM);
-      Serial.println("BOOST");
-    } else
     if (inchar == 'C') {
       chargePWM += 5;
       if (chargePWM > 255) chargePWM = 255;
@@ -277,13 +266,14 @@ void handleSerial() {
       drainPWM[0]=0;
       drainPWM[1]=0;
       drainPWM[2]=0;
-      Serial.println("DRAIN1,2,3PWM=0");
+      chargePWM=255;
+      Serial.println("DRAIN1,2,3,CHARGE123 PWM=off");
     } else
     if (inchar == 'X') {
       Serial.println("power off!");
       digitalWrite(ONFET,LOW);
     } else {
-      Serial.println("d=debugmode, 1=drain1, 2=drain2, 3=drain3, b=boost, l=light, c=charge123, r=resetPWMs, X=off");
+      Serial.println("d=debugmode, 1=drain1, 2=drain2, 3=drain3, l=light, c=charge123, r=resetPWMs, X=off");
     }
   }
 }
