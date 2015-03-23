@@ -16,7 +16,6 @@
 #define BATTERY      A5
 #define CCFL_SENSE   A6
 #define JACK_SENSE   A7
-// TODO: tester for new CHARGE123 output
 // TODO: test with actual charging
 // TODO: write charging into master branch
 // TODO: write balancing algorithm in master branch
@@ -56,8 +55,8 @@ pinMode(DRAIN3   ,OUTPUT);
 pinMode(LED_PIN,OUTPUT);
 digitalWrite(LED_PIN,HIGH);  // LED ON
 
-pinMode(CCFL_PIN,OUTPUT); // 32khz
-setPwmFrequency(DRAIN3,8); // timer1 = pin 9,10 = CHARGE123, DRAIN3
+pinMode(CCFL_PIN,OUTPUT); // 15.63khz
+setPwmFrequency(DRAIN3,8); // timer1 = pin 9,10 = OLD CHARGE123, DRAIN3
 setPwmFrequency(DRAIN2,8); // timer2 = pin 3,11 = DRAIN2, DRAIN1
 // WGM02 = 0, WGM01 = 1, WGM00 = 1 see page 108
 // COM0B1 = 1, COM0B0 = 0 see page 107
@@ -126,11 +125,13 @@ void getBattVoltages() {
 
 void die(String reason) {
   Serial.println("off because: "+reason);
-  digitalWrite(LED_PIN,HIGH);  // LED ON
+  digitalWrite(LED_PIN,LOW);  // LED OFF
   digitalWrite(ONFET,LOW); // turn power off
   analogWrite(CCFL_PIN,0); // turn off ccfl
-  while (true) { // wait here until they let go of button
+  while (!digitalRead(ONFET)) { // wait here until they let go of button or handleSerial turns us back on
     Serial.print(reason);
+    handleSerial(); // do whatever user wants
+    updateDrains(); // make sure PWMs are set
     getBattVoltages();
     printAnalogs();
     delay((unsigned)1000*DELAYFACTOR);
