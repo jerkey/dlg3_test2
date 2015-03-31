@@ -237,13 +237,16 @@ void updateCharging() {
   if ((batt1 >= BATT_NEARFULL) || (batt2 >= BATT_NEARFULL) || (batt3 >= BATT_NEARFULL)) { // if any cell is nearfull
     if ((batt1 < BATT_LAGGING) || (batt2 < BATT_LAGGING) || (batt3 < BATT_LAGGING)) { // if any cell is lagging
       targetChargeI = CHARGEI_SLOW;
-      if (chargeI > 0.1) { // don't drain anything unless we're actually charging!
-        drainPWM[0] = (batt1 >= BATT_NEARFULL) ? 254 : 0; // turn on drainer if battery nearfull
-        drainPWM[1] = (batt2 >= BATT_NEARFULL) ? 254 : 0;
-        drainPWM[2] = (batt3 >= BATT_NEARFULL) ? 254 : 0;
-      }
+      drainPWM[0] = (batt1 >= BATT_NEARFULL) ? 254 : 0; // turn on drainer if battery nearfull
+      drainPWM[1] = (batt2 >= BATT_NEARFULL) ? 254 : 0;
+      drainPWM[2] = (batt3 >= BATT_NEARFULL) ? 254 : 0;
     }
     // do something to tell the user that pack is nearly charged
+  }
+  if (chargeI < 0.1) { // don't drain anything if we're not actually charging!
+    drainPWM[0] = 0;
+    drainPWM[1] = 0;
+    drainPWM[2] = 0;
   }
   if ((batt1 >= BATT_FULL) || (batt2 >= BATT_FULL) || (batt3 >= BATT_FULL)) {
     targetChargeI = 0.0;
