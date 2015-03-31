@@ -16,16 +16,22 @@
 #define BATTERY      A5
 #define CCFL_SENSE   A6
 #define JACK_SENSE   A7
-// TODO: test with actual charging
 // TODO: write charging into master branch
 // TODO: write balancing algorithm in master branch
 
 #define B1P_COEFF     203.518 // ADC counts per volt
 #define B2P_COEFF     122.460
 #define BATTERY_COEFF 81.936
-#define BATT_EMPTY   2.75 // how many volts to DIE at
+#define BATT_EMPTY   2.95 // how many volts to DIE at
+#define BATT_FULL    4.19 // how many volts to STOP CHARGING
+#define BATT_LAGGING 3.85 // if some cells are lagging and others are nearfull, use drainers
+#define BATT_NEARFULL 4.10 // when charging must slow to match drainers on NEARFULL cells
+#define CHARGEI_SLOW    0.2 // current to slow-charge with when one or two cells NEARFULL
+#define CHARGEI_MAX     1.8 // MAXIMUM current to charge with
 #define JACK_COEFF (BATTERY_COEFF ) // using same sense resistors but..
 #define R901_OHMS 0.462 / 0.92 // ohms of R between JACK_SENSE and BATTERY
+#define MAX_CHARGEPWM 30 // going lower than this PWM does not increase charging
+#define CHARGEPWM_JUMP 0.1 // amount to change chargePWM each time updateCharging() runs
 
 int brightness = 450; // 175 with built-in vref
 #define MAX_PWM 250
@@ -36,11 +42,11 @@ int offCount = 0;  // counts how many off requests we've seen
 unsigned long senseRead = 0;
 #define DELAYFACTOR 32 // millis() and delay() this many times faster
 float batt1,batt2,batt3,battery_total ; // voltage of battery cells and total
-float r901, chargeI; // voltage at R901_OHMS, current across it
+float r901, chargeI, targetChargeI; // voltage at R901_OHMS, current across it, target charge current
 unsigned short debugMode = 0, lightMode = 0; // allows for debugging modes to be triggered in production software
 unsigned short drainPWM[3] = {0,0,0}; // individual battery balancers, 254 = ON
 unsigned short lastDrainPWM[3] = {0,0,0}; // to prevent unnecessary analogWrites
-int chargePWM=255; // charge123 is a PFET, 255 = none, 254=min 1=max charging
+float chargePWM=255; // charge123 is a PFET, 255 = none, 254=min 1=max charging
 int lastChargePWM = 0; // different so updatePWM() sets it immediately
 
 void setup() {
@@ -102,6 +108,7 @@ void loop() {
   }
 
   if (offCount > OFF_THRESH) die("offCount > OFF_THRESH");
+  updateCharging(); // set PWMs according to charging situation
   updateDrains(); // make sure PWMs are set
 }
 
@@ -128,6 +135,7 @@ void die(String reason) {
   analogWrite(CCFL_PIN,0); // turn off ccfl
   while (true) { // wait here until they let go of button
     Serial.print(reason);
+    updateCharging(); // set PWMs according to charging situation
     updateDrains(); // make sure PWMs are set
     getBattVoltages();
     printAnalogs();
@@ -198,12 +206,39 @@ void updateDrains() {
     analogWrite(DRAIN3,drainPWM[2]);
     lastDrainPWM[2]=drainPWM[2];
   }
-  if (chargePWM != lastChargePWM) {
-    analogWrite(CHARGE123,chargePWM);
-    lastChargePWM=chargePWM;
+  if ((int)chargePWM != lastChargePWM) {
+    lastChargePWM=(int)chargePWM;
+    analogWrite(CHARGE123,lastChargePWM);
   }
 }
 
+// http://electronics.stackexchange.com/questions/120996/lipo-charger-question
+void updateCharging() {
+  targetChargeI = CHARGEI_MAX; // default is to charge at full current
+  if ((batt1 >= BATT_NEARFULL) || (batt2 >= BATT_NEARFULL) || (batt3 >= BATT_NEARFULL)) { // if any cell is nearfull
+    if ((batt1 < BATT_LAGGING) || (batt2 < BATT_LAGGING) || (batt3 < BATT_LAGGING)) { // if any cell is lagging
+      targetChargeI = CHARGEI_SLOW;
+      if (chargeI > 0.1) { // don't drain anything unless we're actually charging!
+        drainPWM[0] = (batt1 >= BATT_NEARFULL) ? 254 : 0; // turn on drainer if battery nearfull
+        drainPWM[1] = (batt2 >= BATT_NEARFULL) ? 254 : 0;
+        drainPWM[2] = (batt3 >= BATT_NEARFULL) ? 254 : 0;
+      }
+    }
+    // do something to tell the user that pack is nearly charged
+  }
+  if ((batt1 >= BATT_FULL) || (batt2 >= BATT_FULL) || (batt3 >= BATT_FULL)) {
+    targetChargeI = 0.0;
+  }
+
+  if (chargeI > targetChargeI) { // charge current is too high
+    chargePWM += CHARGEPWM_JUMP; // reduce charge by bringing PWM higher
+    if (chargePWM > 255) chargePWM = 255; // don't bring it higher than 255 = fully off
+  }
+  if (chargeI < targetChargeI) { // charge current is too low
+    chargePWM -= CHARGEPWM_JUMP; // increase charge by bringing PWM lower
+    if (chargePWM < MAX_CHARGEPWM) chargePWM = MAX_CHARGEPWM; // don't bring it lower than MAX_CHARGEPWM
+  }
+}
 
 void setPwmFrequency(int pin, int divisor) {
   byte mode;
