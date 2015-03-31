@@ -28,6 +28,7 @@
 #define BATT_NEARFULL 4.10 // when charging must slow to match drainers on NEARFULL cells
 #define CHARGEI_SLOW    0.2 // current to slow-charge with when one or two cells NEARFULL
 #define CHARGEI_MAX     1.8 // MAXIMUM current to charge with
+#define CHARGEI_MIN     0.1 // current indicating charger is connected and operating
 #define JACK_COEFF (BATTERY_COEFF ) // using same sense resistors but..
 #define R901_OHMS 0.462 / 0.92 // ohms of R between JACK_SENSE and BATTERY
 #define MAX_CHARGEPWM 30 // going lower than this PWM does not increase charging
@@ -44,6 +45,7 @@ unsigned long senseRead = 0;
 float batt1,batt2,batt3,battery_total ; // voltage of battery cells and total
 float r901, chargeI, targetChargeI; // voltage at R901_OHMS, current across it, target charge current
 unsigned short debugMode = 0, lightMode = 0; // allows for debugging modes to be triggered in production software
+#define CHARGEMODE 100 // we are only on to charge the battery; no light
 unsigned short drainPWM[3] = {0,0,0}; // individual battery balancers, 254 = ON
 unsigned short lastDrainPWM[3] = {0,0,0}; // to prevent unnecessary analogWrites
 float chargePWM=255; // charge123 is a PFET, 255 = none, 254=min 1=max charging
@@ -71,6 +73,12 @@ setPwmFrequency(DRAIN2,8); // timer2 = pin 3,11 = DRAIN2, DRAIN1
   TCCR0A = 0b10100011; // timer0 affects pin 5,6 = CCFL_PIN,BOOST
   TCCR0B = 0b00000001;
   Serial.begin(76800); // to get 38400 baud, put 76800 baud here
+  analogWrite(CHARGE123,MAX_CHARGEPWM); // to find out if charger is connected
+  getBattVoltages();
+  if (chargeI > CHARGEI_MIN) { // charger is connected
+    lightMode = CHARGEMODE;
+  }
+  analogWrite(CHARGE123,255); // turn off charging for now
 }
 
 void loop() {
@@ -107,7 +115,18 @@ void loop() {
     offCount = 0; // if (--offCount < 0) offCount = 0;
   }
 
-  if (offCount > OFF_THRESH) die("offCount > OFF_THRESH");
+  if (offCount > OFF_THRESH) {
+    if (chargeI < CHARGEI_MIN) {
+      die("offCount > OFF_THRESH");
+    } else {
+      lightMode = CHARGEMODE;
+    }
+  }
+
+  if ((lightMode == CHARGEMODE) && (chargeI < CHARGEI_MIN)) {
+      die("charging complete");
+  }
+
   updateCharging(); // set PWMs according to charging situation
   updateDrains(); // make sure PWMs are set
 }
